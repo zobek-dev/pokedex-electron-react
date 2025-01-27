@@ -7,14 +7,14 @@ if (!process.contextIsolated) {
 
 try {
   contextBridge.exposeInMainWorld('api', {
-    // Expose the "catchPokemon" method to save Pokémon
-    catchPokemon: (name, url) => ipcRenderer.invoke('catch-pokemon', { name, url }),
+    // Expose the "getPokemonCount" method to retrieve the count of Pokémon
+    getPokemonCount: () => ipcRenderer.invoke('get-pokemon-count'),
+
+    // Expose the "savePokemon" method to save a new Pokémon
+    savePokemon: (name: string, url: string) => ipcRenderer.invoke('save-pokemon', { name, url }),
 
     // Expose the "getPokemon" method to retrieve all Pokémon
-    getPokemon: () => ipcRenderer.invoke('get-pokemon'),
-
-    // Optional: If you want to add a delete function, expose it here
-    deletePokemon: (id) => ipcRenderer.invoke('delete-pokemon', id)
+    getPokemon: () => ipcRenderer.invoke('get-pokemon')
   })
 } catch (error) {
   console.error(error)

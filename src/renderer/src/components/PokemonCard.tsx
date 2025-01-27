@@ -14,8 +14,6 @@ const fetchSinglePokemon = async (url: string): Promise<Pokemon | undefined> => 
 export const PokemonCard = ({ name, url, button = true }: PokemonInfo) => {
   const [pokemon, setPokemon] = useState<Pokemon | undefined>(undefined)
 
-  console.log('window.api:', window.api)
-
   if (!window.api) {
     console.error('window.api is not available. Check your preload script.')
   }
@@ -30,27 +28,35 @@ export const PokemonCard = ({ name, url, button = true }: PokemonInfo) => {
     if (!pokemon) return
 
     try {
-      const backendResponse = await fetch('http://localhost:3500/api/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: name,
-          url: url
+      // Query current count from SQLite
+      const currentCount = await (window as any).api.getPokemonCount()
+
+      if (currentCount < 6) {
+        // Save locally in SQLite
+        const result = await (window as any).api.savePokemon(name, url)
+        console.log('Pokemon saved locally:', result)
+        alert(`Caught ${pokemon.name}!`)
+      } else {
+        // Save to backend if SQLite has 6 Pokémon
+        const backendResponse = await fetch('http://localhost:3500/api/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: name,
+            url: url
+          })
         })
-      })
 
-      if (!backendResponse.ok) {
-        throw new Error(`Error saving Pokémon to backend: ${backendResponse.statusText}`)
+        if (!backendResponse.ok) {
+          throw new Error(`Error saving Pokémon to backend: ${backendResponse.statusText}`)
+        }
+
+        const backendResult = await backendResponse.json()
+        console.log('Pokemon saved to backend:', backendResult)
+        alert(`Caught ${pokemon.name} and sent it to the Professor!`)
       }
-
-      const backendResult = await backendResponse.json()
-      console.log('Pokemon saved to backend:', backendResult)
-      // Call the IPC method to save Pokémon in the database
-      const result = await (window as any).api.catchPokemon(name, url)
-      console.log('Pokemon caught:', result)
-      alert(`Caught ${pokemon.name}!`)
     } catch (error) {
       console.error('Failed to catch Pokémon:', error)
       alert('Failed to catch Pokémon. Please try again.')
@@ -69,7 +75,7 @@ export const PokemonCard = ({ name, url, button = true }: PokemonInfo) => {
           {name}
         </h5>
         <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-          {pokemon?.types[0].type.name || 'Unknown Type'}
+          {pokemon?.types[0]?.type?.name || 'Unknown Type'}
         </span>
         {button && (
           <div className="flex mt-4 md:mt-6">

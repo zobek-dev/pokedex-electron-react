@@ -56,27 +56,49 @@ function createWindow() {
 }
 
 // IPC to "catch" a Pokémon
-ipcMain.handle('catch-pokemon', (_, { name, url }) => {
-  // Begin a transaction
-  const transaction = db.transaction(() => {
-    // Check the current number of Pokémon in the database
-    const count = db.prepare('SELECT COUNT(*) AS count FROM pokemon').get().count
+// ipcMain.handle('catch-pokemon', (_, { name, url }) => {
+//   // Begin a transaction
+//   const transaction = db.transaction(() => {
+//     // Check the current number of Pokémon in the database
+//     const count = db.prepare('SELECT COUNT(*) AS count FROM pokemon').get().count
 
-    // If there are already 6 Pokémon, delete the oldest one
-    if (count >= 6) {
-      db.prepare(
-        'DELETE FROM pokemon WHERE id = (SELECT id FROM pokemon ORDER BY timestamp ASC LIMIT 1)'
-      ).run()
-    }
+//     // If there are already 6 Pokémon, delete the oldest one
+//     if (count >= 6) {
+//       db.prepare(
+//         'DELETE FROM pokemon WHERE id = (SELECT id FROM pokemon ORDER BY timestamp ASC LIMIT 1)'
+//       ).run()
+//     }
 
-    // Add the new Pokémon to the database
+//     // Add the new Pokémon to the database
+//     const stmt = db.prepare('INSERT INTO pokemon (name, url) VALUES (?, ?)')
+//     const result = stmt.run(name, url)
+
+//     return { id: result.lastInsertRowid, name, url, timestamp: new Date().toISOString() }
+//   })
+
+//   return transaction()
+// })
+
+ipcMain.handle('get-pokemon-count', () => {
+  const stmt = db.prepare('SELECT COUNT(*) AS count FROM pokemon')
+  const result = stmt.get()
+  return result.count // Return the count of Pokémon
+})
+
+ipcMain.handle('save-pokemon', (_, { name, url }: { name: string; url: string }) => {
+  try {
     const stmt = db.prepare('INSERT INTO pokemon (name, url) VALUES (?, ?)')
     const result = stmt.run(name, url)
-
-    return { id: result.lastInsertRowid, name, url, timestamp: new Date().toISOString() }
-  })
-
-  return transaction()
+    return {
+      id: result.lastInsertRowid,
+      name,
+      url,
+      timestamp: new Date().toISOString()
+    } // Return the newly added Pokémon
+  } catch (error) {
+    console.error('Error saving Pokémon:', error)
+    throw new Error('Failed to save Pokémon. Please try again.')
+  }
 })
 
 // IPC to retrieve all Pokémon
